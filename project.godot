@@ -11,13 +11,10 @@ config_version=5
 [application]
 
 config/name="remote_control"
-config/features=PackedStringArray("4.2", "Mobile")
+run/main_scene="res://scenes/wip/DemoWindowRipping.tscn"
+config/features=PackedStringArray("4.2", "C#", "Mobile")
 config/icon="res://icon.svg"
 
 [dotnet]
 
 project/assembly_name="remote_control"
-
-[rendering]
-
-renderer/rendering_method="mobile"

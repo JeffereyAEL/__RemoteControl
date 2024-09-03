@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://bhqkws3lkhs0o"]
+[gd_scene load_steps=2 format=3 uid="uid://bdp0qiiik588g"]
 
 [ext_resource type="Script" path="res://source/core/connection_manager.cs" id="1_f38u3"]
 

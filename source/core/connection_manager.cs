@@ -1,18 +1,17 @@
 using Godot;
-using System;
 
-public partial class connection_manager : ContainerPanel
+public partial class connection_manager : PanelContainer
 {
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
 	{
-		switch (OS.get_name()) {
+		switch (OS.GetName()) {
 			case "Windows":
-				break,
+				break;
 			case "Android":
-				break,
+				break;
 			default:
-				break
+				break;
 
 		}
 	}
@@ -20,5 +19,6 @@ public partial class connection_manager : ContainerPanel
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
 	public override void _Process(double delta)
 	{
+		
 	}
 }

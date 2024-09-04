@@ -1,29 +1,36 @@
+using System;
 using Godot;
 
 public partial class WindowRipper : Node
 {
+	private Control RipContainer;
 	private WindowRippingWindowsExtensions Ripper;
 	private double ElapsedTime;
-	[Export] private const double FrameRate = 1.0 / 30.0;
-	private MeshInstance3D Quad;
-	private Camera3D Camera;
+	private TextureRect RipDest;
+	private Camera2D Camera;
 	private CompressedTexture2D DebugImage;
-
+	[Export] private const double FrameRate = 1.0 / 30.0;
+	[Export] public string WindowToRipTitle = "__slime_castle__";
+	
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
 	{
 		GD.Print("In WindowRipper._Ready()");
 
-		Ripper = new WindowRippingWindowsExtensions("__slime_castle__");
-		Quad = GetNode<MeshInstance3D>("/root/demoWindowRipper/windowRip");
-		Camera = GetNode<Camera3D>("/root/demoWindowRipper/mainCamera");
-		Camera.MakeCurrent();
-		DebugImage = GD.Load<CompressedTexture2D>("res://assets/debug/Hell.png");
-		ElapsedTime = 0.0;
+		Ripper = new WindowRippingWindowsExtensions(WindowToRipTitle);
 
-		// debug
-		SetProcess(false);
-		SetTexture();
+		RipContainer = GetNode<Control>("winRipContainer");
+		RipDest = GetNode<TextureRect>("winRipContainer/winRipDest");
+		var vp_size = GetViewport().GetWindow().Size;
+		RipContainer.SetSize(vp_size);
+		GetViewport().GetWindow().SizeChanged += this.OnViewportSizeChanged;
+
+		ElapsedTime = 0.0;
+	}
+
+	public void OnViewportSizeChanged()
+	{
+		RipContainer.SetSize(GetViewport().GetWindow().Size);
 	}
 
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -32,7 +39,7 @@ public partial class WindowRipper : Node
 		ElapsedTime += delta;
 		if (ElapsedTime >= FrameRate)
 		{
-			// SetTexture();
+			SetTexture();
 
 			ElapsedTime -= FrameRate;
 		}
@@ -40,29 +47,10 @@ public partial class WindowRipper : Node
 
 	public void SetTexture()
 	{
-		var mat = (StandardMaterial3D)Quad.MaterialOverride;
-		var albedo_tex = (ImageTexture)mat.AlbedoTexture;
-		GD.Print($"Albedo size: {albedo_tex.GetSize()}");
-		
-		albedo_tex.SetImage(Ripper.CaptureWindow().GetImage());
-		if (albedo_tex != null)
-		{
-			mat.AlbedoTexture = albedo_tex;
-			Quad.MaterialOverride = mat;
-		}
-		else
-		{
-			mat.AlbedoTexture = DebugImage;
-			Quad.MaterialOverride = mat;
-		}
+		var texture = Ripper.CaptureWindow();
+		if (texture == null) 
+			throw new Exception("Capture Window didn't return a valid texture");
+
+		RipDest.Texture = texture;
 	}
 }
-
-
-/*
-	window size: 762, 1315
-	Albedo size: (0, 0)
-	Format: Format32bppRgb
-	stride = -3048 bytes
-	Current Size = -4008120
-*/

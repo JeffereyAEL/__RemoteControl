@@ -8,17 +8,20 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Godot;
 
-
 public partial class WindowRippingWindowsExtensions : GodotObject
 {
-	private int Width;
-	private int Height;
-	private IntPtr WinHandle;
+	// DEBUG
+	private const string DebugOutputDir = "assets\\debug\\outputs\\" ;
 
-	private CompressedTexture2D DebugImage;
+	// Class
+	private string WinTitle;
 
 	[DllImport("user32.dll", CharSet = CharSet.Auto)]
 	private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+	[DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
 
 	[DllImport("user32.dll")]
 	private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
@@ -57,34 +60,18 @@ public partial class WindowRippingWindowsExtensions : GodotObject
 	
 	public WindowRippingWindowsExtensions()
 	{
-		WinHandle = IntPtr.Zero;
-		Width = 0;
-		Height = 0;
+		WinTitle = null;
 	}
+
 
 	public WindowRippingWindowsExtensions(string winTitle)
 	{
-		Godot.GD.Print("In WindowRipping.WindowsExtensions Constructor");
-		WinHandle = FindWindow(null, winTitle);
-		if (WinHandle == IntPtr.Zero)
-			throw new ArgumentException($"Unable to find window with name \"{winTitle}\"");
-
-		RECT win_rect = new RECT();
-		if (!GetWindowRect(WinHandle, out win_rect)) 
-			throw new Exception($"Unable to find window with handle \"{WinHandle}\"");
-		else
-		{
-			Width = win_rect.Right - win_rect.Left;
-			Height = win_rect.Bottom - win_rect.Top;
-		}
-		Godot.GD.Print($"window size: {Width}, {Height}");
-		DebugImage = GD.Load<CompressedTexture2D>("res://assets/debug/Hell.png");
-		SaveBytesColorData(TextureToArray(DebugImage),  "WorkingImage.txt");
+		WinTitle = winTitle;
 	}	
 
 	public bool IsValid()
 	{
-		return WinHandle != IntPtr.Zero;
+		return WinTitle != null;
 	}
 
 	public static WindowRippingWindowsExtensions Factory(string winTitle)
@@ -92,128 +79,97 @@ public partial class WindowRippingWindowsExtensions : GodotObject
 		return new WindowRippingWindowsExtensions(winTitle);
 	}
 
-    public Godot.ImageTexture CaptureWindow()
+	public Godot.ImageTexture CaptureWindow()
 	{
-		if (WinHandle == IntPtr.Zero) throw new NullReferenceException("WRWE class was not intialized properly, WinHandle was IntPtr.Zero");
+		IntPtr win_handle = FindWindow(null, WinTitle);
+		if (win_handle == IntPtr.Zero)
+			throw new ArgumentException($"Unable to find window with name \"{WinTitle}\"");
 
-		IntPtr win_dc = GetWindowDC(WinHandle);
+		RECT win_rect = new RECT();
+		if (!GetWindowRect(win_handle, out win_rect)) 
+			throw new Exception($"Unable to find window with handle \"{win_handle}\"");
+
+		int win_width = win_rect.Right - win_rect.Left;
+		int win_height = win_rect.Bottom - win_rect.Top;
+		
+		IntPtr win_dc = GetWindowDC(win_handle);
 		IntPtr mem_dc = CreateCompatibleDC(win_dc);
-		IntPtr new_hbitmap = CreateCompatibleBitmap(win_dc, Width, Height);
+		IntPtr new_hbitmap = CreateCompatibleBitmap(win_dc, win_width, win_height);
 		IntPtr old_hbitmap = SelectObject(mem_dc, new_hbitmap);
 
-		BitBlt(mem_dc, 0, 0, Width, Height, win_dc, Width, Height, SRCCOPY);
+		PrintWindow(win_handle, mem_dc, 0);
 
-		SelectObject(mem_dc, old_hbitmap);
-
-        // System.Drawing.Bitmap bitmap = System.Drawing.Bitmap.FromHbitmap(new_hbitmap);
+		Godot.Image image;
 		using (System.Drawing.Bitmap bitmap = System.Drawing.Image.FromHbitmap(new_hbitmap))
 		{
 			BitmapData bitmap_data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-			GD.Print($"Format: {bitmap.PixelFormat}");
-			GD.Print($"bitmap.size: {bitmap.Width}, {bitmap.Height} | window");
 
-			// Calculate the size of the raw pixel data
 			int stride = bitmap_data.Stride;
 			var row_num_bytes = Mathf.Abs(stride);
-			
 			int image_num_bytes = row_num_bytes * bitmap.Height;
-			GD.Print($"stride = {stride} bytes");
-			SaveIntPtrColorData(bitmap_data.Scan0, image_num_bytes, row_num_bytes, "bitmap_data.txt");
-			GD.Print($"Picture Data = {Mathf.Abs(image_num_bytes)} bytes");
-
-			// Create a byte array to hold the raw pixel data
+													
 			byte[] color_data = new byte[image_num_bytes];
-			SaveBytesColorData(color_data,  "init_pixel_data.txt");
-
-			if (stride > 0)
-				// Copy the pixel data from the bitmap's data array to the byte array
-				Marshal.Copy(bitmap_data.Scan0, color_data, 0, color_data.Length);
-			else
+			for (int row = 0; row < bitmap.Height; ++row)
 			{
-				for (int strides = 0; strides < bitmap.Height; ++strides)
+				int dest_ptr = row * row_num_bytes;
+				IntPtr src_ptr = bitmap_data.Scan0 - row_num_bytes * row;
+				for (int pixel = 0; pixel < row_num_bytes / 4; ++pixel)
 				{
-					int dest_ofs = strides * row_num_bytes;
-					IntPtr source_start = bitmap_data.Scan0 - row_num_bytes * strides;
-					Marshal.Copy(source_start, color_data, dest_ofs, row_num_bytes);
-					for (int pixel_ofs = 0; pixel_ofs < row_num_bytes / 4; ++pixel_ofs)
-					{
-						color_data[dest_ofs + 3 + 4 * pixel_ofs] = 255;
-					}
+					int pixel_ofs = 4*pixel;
+					Marshal.Copy(src_ptr+pixel_ofs,   color_data, dest_ptr+pixel_ofs+2, 1);		// B
+					Marshal.Copy(src_ptr+pixel_ofs+1, color_data, dest_ptr+pixel_ofs+1, 1); 	// G
+					Marshal.Copy(src_ptr+pixel_ofs+2, color_data, dest_ptr+pixel_ofs,   1); 	// R
+					color_data[dest_ptr+pixel_ofs+3] = 255;										// A
 				}
 			}
 
-			// Unlock the bitmap
 			bitmap.UnlockBits(bitmap_data);
-			
-			SaveBytesColorData(color_data,  "blited_pixel_data.txt");
-			Godot.Image image = Godot.Image.CreateFromData(Width, Height, false, Godot.Image.Format.Rgba8, color_data);
-			GD.Print($"image Size = {Width * Height * 4}");
-
+			SelectObject(mem_dc, old_hbitmap);
 			DeleteObject(new_hbitmap);
 			DeleteObject(mem_dc);
-			ReleaseDC(WinHandle, win_dc);
+			var h_result = ReleaseDC(win_handle, win_dc);
+			if (h_result != 1) throw new Exception($"ReleaseDC returned an non-one HRESULT: {h_result}");
 
-			return ImageTexture.CreateFromImage(image);
+			image = Godot.Image.CreateFromData(win_width, win_height, false, Godot.Image.Format.Rgba8, color_data);
 		}
+
+		return ImageTexture.CreateFromImage(image);
 	}
 
-	private byte[] TextureToArray(CompressedTexture2D compressedTexture)
-    {
-        if (compressedTexture == null)
-        {
-            GD.PrintErr("CompressedTexture2D is null.");
-            return null;
-        }
-
-        // Get the texture data
-        return DebugImage.GetImage().GetData();
-    }
-
-	private void SaveBytesColorData(byte[] data, string fileName)
+#if GODOT_DEBUG
+	private void SaveBitmap(System.Drawing.Bitmap bitmap, string fileName)
 	{
-		using (StreamWriter writer = new StreamWriter("assets//debug//"+fileName))
+		using (StreamWriter writer = new StreamWriter(DebugOutputDir+fileName))
 		{
-			int length = data.Length;
-			for (int i = 0; i < length; i += 4)
+			writer.WriteLine("// bottom-left -> top-right pixel color data");
+			for (int y = 0; y < bitmap.Height; ++y)
 			{
-				writer.WriteLine("// top-left -> bottom-right pixel color data");
-				// Determine the end index for the current line
-				int end = Math.Min(i + 4, length);
-				
-				// Write the bytes as integers
-				for (int j = i; j < end; j++)
+				for (int x = 0; x < bitmap.Width; ++x)
 				{
-					writer.Write((int)data[j] + " ");
-				}
+					var p = bitmap.GetPixel(x, y);
 
-				// Ensure the line ends
-				writer.WriteLine();
-			}
-		}
-	}
-
-	private void SaveIntPtrColorData(IntPtr data, int dataLen, int stride, string fileName)
-	{
-		using (StreamWriter writer = new StreamWriter("assets//debug//"+fileName))
-		{
-			writer.WriteLine("// top-left -> bottom-right pixel color data");
-			int length = dataLen;
-			for (int row = 0; row < length / stride; row += 4)
-			{
-				for (int pixel = 0; pixel < stride / 4; ++pixel)
-				{
-					// Write the bytes as integers
-					for (int comp = 0; comp < 4; ++comp)
-					{
-						writer.Write(Marshal.ReadByte(data, comp) + " ");
-					}
-
-					// Ensure the line ends
-					writer.WriteLine();
+					writer.WriteLine($"Color ({p.A/255.0f}, {p.B/255f}, {p.G/255f}, {p.R/255f})");
 				}
 			}
 		}
 	}
+
+		private void SaveImage(Godot.Image image, string fileName)
+	{
+		using (StreamWriter writer = new StreamWriter(DebugOutputDir+fileName))
+		{
+			writer.WriteLine("// bottom-left -> top-right pixel color data");
+			for (int y = 0; y < image.GetHeight(); ++y)
+			{
+				for (int x = 0; x < image.GetWidth(); ++x)
+				{
+					var p = image.GetPixel(x, y);
+					writer.WriteLine($"Color ({p.R}, {p.G}, {p.B}, {p.A})");
+				}
+			}
+		}
+	}
+#endif
 }
 
 #pragma warning restore CA1416 // Validate platform compatibility

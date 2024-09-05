@@ -1,6 +1,6 @@
 using Godot;
 
-public partial class connection_manager : PanelContainer
+public partial class ConnectionManager : PanelContainer
 {
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()

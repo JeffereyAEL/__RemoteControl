@@ -16,5 +16,6 @@ public partial class InputFetcher : TextureRect
     public override void _Input(InputEvent e)
     {
         // TODO: read mouse input events, convert them to source-relative space and simulate-input into LDPlayer via Windows
+		// TODO: find a way to rip the window data so that it still updats even when it's hidden
     }
 }

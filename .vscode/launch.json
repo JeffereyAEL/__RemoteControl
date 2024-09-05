@@ -5,7 +5,7 @@
             "name": "Attach",
             "type": "godot-mono",
             "request": "attach",
-            "preLaunchTask": "build",
+            "preLaunchTask": "BuildC#",
             "address": "localhost",
             "port": 6005
         },
@@ -13,7 +13,7 @@
             "name": "Play",
             "type": "coreclr",
             "request": "launch",
-            "preLaunchTask": "build",
+            "preLaunchTask": "BuildC#",
             "justMyCode": false,
             "program": "${env:GODOT_PATH}",
             "args": [],

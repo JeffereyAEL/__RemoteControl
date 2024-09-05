@@ -8,13 +8,14 @@ using System.IO;
 using System.Runtime.InteropServices;
 using Godot;
 
-public partial class WindowRippingWindowsExtensions : GodotObject
+// TODO: impliment OnWindowSizeChanged so that our fetching programmatially updates our image size
+public partial class GDICapture : GraphicsCapture
 {
 	// DEBUG
 	private const string DebugOutputDir = "assets\\debug\\outputs\\" ;
 
 	// Class
-	private string WinTitle;
+	private IntPtr WinHandle;
 
 	[DllImport("user32.dll", CharSet = CharSet.Auto)]
 	private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
@@ -58,46 +59,39 @@ public partial class WindowRippingWindowsExtensions : GodotObject
 
 	private const int SRCCOPY = 0x00CC0020;
 	
-	public WindowRippingWindowsExtensions()
+	public GDICapture()
 	{
-		WinTitle = null;
+		WinHandle = IntPtr.Zero;
 	}
 
-
-	public WindowRippingWindowsExtensions(string winTitle)
+	protected override void _Factory()
 	{
-		WinTitle = winTitle;
-	}	
-
-	public bool IsValid()
-	{
-		return WinTitle != null;
-	}
-
-	public static WindowRippingWindowsExtensions Factory(string winTitle)
-	{
-		return new WindowRippingWindowsExtensions(winTitle);
-	}
-
-	public Godot.ImageTexture CaptureWindow()
-	{
-		IntPtr win_handle = FindWindow(null, WinTitle);
-		if (win_handle == IntPtr.Zero)
+		WinHandle = FindWindow(null, WinTitle);
+		if (WinHandle == IntPtr.Zero)
 			throw new ArgumentException($"Unable to find window with name \"{WinTitle}\"");
 
 		RECT win_rect = new RECT();
-		if (!GetWindowRect(win_handle, out win_rect)) 
-			throw new Exception($"Unable to find window with handle \"{win_handle}\"");
+		if (!GetWindowRect(WinHandle, out win_rect)) 
+			throw new Exception($"Unable to find window with handle \"{WinHandle}\"");
 
-		int win_width = win_rect.Right - win_rect.Left;
-		int win_height = win_rect.Bottom - win_rect.Top;
+		WinWidth = win_rect.Right - win_rect.Left;
+		WinHeight = win_rect.Bottom - win_rect.Top;
+	}
+
+	public static GDICapture Factory(string winTitle)
+	{
+		return Factory<GDICapture>(winTitle);
+	}
+
+	public override Godot.ImageTexture CaptureWindow()
+	{
 		
-		IntPtr win_dc = GetWindowDC(win_handle);
+		IntPtr win_dc = GetWindowDC(WinHandle);
 		IntPtr mem_dc = CreateCompatibleDC(win_dc);
-		IntPtr new_hbitmap = CreateCompatibleBitmap(win_dc, win_width, win_height);
+		IntPtr new_hbitmap = CreateCompatibleBitmap(win_dc, WinWidth, WinHeight);
 		IntPtr old_hbitmap = SelectObject(mem_dc, new_hbitmap);
 
-		PrintWindow(win_handle, mem_dc, 0);
+		PrintWindow(WinHandle, mem_dc, 0);
 
 		Godot.Image image;
 		using (System.Drawing.Bitmap bitmap = System.Drawing.Image.FromHbitmap(new_hbitmap))
@@ -127,16 +121,21 @@ public partial class WindowRippingWindowsExtensions : GodotObject
 			SelectObject(mem_dc, old_hbitmap);
 			DeleteObject(new_hbitmap);
 			DeleteObject(mem_dc);
-			var h_result = ReleaseDC(win_handle, win_dc);
+			var h_result = ReleaseDC(WinHandle, win_dc);
 			if (h_result != 1) throw new Exception($"ReleaseDC returned an non-one HRESULT: {h_result}");
 
-			image = Godot.Image.CreateFromData(win_width, win_height, false, Godot.Image.Format.Rgba8, color_data);
+			image = Godot.Image.CreateFromData(WinWidth, WinHeight, false, Godot.Image.Format.Rgba8, color_data);
 		}
 
 		return ImageTexture.CreateFromImage(image);
 	}
 
-#if GODOT_DEBUG
+    public override void OnWindowSizeChanged()
+    {
+        throw new NotImplementedException();
+    }
+
+#if DEBUG
 	private void SaveBitmap(System.Drawing.Bitmap bitmap, string fileName)
 	{
 		using (StreamWriter writer = new StreamWriter(DebugOutputDir+fileName))

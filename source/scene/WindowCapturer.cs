@@ -1,10 +1,10 @@
 using System;
 using Godot;
 
-public partial class WindowRipper : Node
+public partial class WindowCapturer : Node
 {
 	private Control RipContainer;
-	private WindowRippingWindowsExtensions Ripper;
+	private GraphicsCapture Ripper;
 	private double ElapsedTime;
 	private TextureRect RipDest;
 	private Camera2D Camera;
@@ -17,7 +17,7 @@ public partial class WindowRipper : Node
 	{
 		GD.Print("In WindowRipper._Ready()");
 
-		Ripper = new WindowRippingWindowsExtensions(WindowToRipTitle);
+		Ripper = GDICapture.Factory(WindowToRipTitle);
 
 		RipContainer = GetNode<Control>("winRipContainer");
 		RipDest = GetNode<TextureRect>("winRipContainer/winRipDest");

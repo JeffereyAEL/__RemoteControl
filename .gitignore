@@ -25,3 +25,5 @@ assets/debug/*
 
 #temporary ignores
 Lib/*
+**/Records/*
+**/Record.cs

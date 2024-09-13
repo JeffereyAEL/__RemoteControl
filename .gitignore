@@ -16,6 +16,7 @@ mono_crash.*.json
 .vscode/*
 *.sln
 *.code-workspace
+*.csproj
 
 # Ignore Project Debug Tools
 assets/debug/*

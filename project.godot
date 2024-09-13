@@ -11,13 +11,13 @@ config_version=5
 [application]
 
 config/name="remote_control"
-run/main_scene="res://scenes/wip/DemoWindowRipping.tscn"
+run/main_scene="res://scenes/wip/DemoWindowCapture.tscn"
 config/features=PackedStringArray("4.2", "C#", "Mobile")
 config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=920
+window/size/viewport_width=1020
 window/size/viewport_height=1080
 window/handheld/orientation=1
 window/vsync/vsync_mode=2
@@ -25,3 +25,8 @@ window/vsync/vsync_mode=2
 [dotnet]
 
 project/assembly_name="remote_control"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=false

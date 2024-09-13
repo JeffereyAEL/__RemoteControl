@@ -1,7 +1,5 @@
 # Godot 4+ specific ignores
 .godot/
-
-# Godot-specific ignores
 .import/
 export.cfg
 export_presets.cfg
@@ -13,15 +11,17 @@ export_presets.cfg
 .mono/
 data_*/
 mono_crash.*.json
-assets/debug/OurOutput.txt
-assets/debug/OurWindowRip.txt
-assets/debug/WorkingImage.txt
-assets/debug/bitmap_data.txt
-assets/debug/blited_pixel_data.txt
-assets/debug/init_pixel_data.txt
-assets/debug/new_hbitmap.txt
-.vscode/settings.json
-scenes/wip/DemoWindowRipping.tscn
-scenes/wip/WindowRipper.cs
-assets/debug/*
+
+# VS Code ignores
+.vscode/*
 *.sln
+*.code-workspace
+
+# Ignore Project Debug Tools
+assets/debug/*
+
+# Notepad PP ignores
+*.bak
+
+#temporary ignores
+Lib/*

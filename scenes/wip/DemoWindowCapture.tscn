@@ -1,0 +1,60 @@
+[gd_scene load_steps=4 format=3 uid="uid://cevdyn7mhu7jy"]
+
+[ext_resource type="Script" path="res://source/take2/WindowRemote.cs" id="1_artcb"]
+[ext_resource type="Texture2D" uid="uid://brtvlw2o0p8mc" path="res://assets/debug/images/Hell.png" id="2_foggv"]
+[ext_resource type="Script" path="res://source/take2/WindowReference.cs" id="3_bgyv6"]
+
+[node name="demoWindowCapture" type="HBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="localReference" type="Control" parent="."]
+custom_minimum_size = Vector2(100, 1080)
+layout_mode = 2
+script = ExtResource("3_bgyv6")
+WindowTitle = "__slime_castle__"
+
+[node name="ColorRect" type="ColorRect" parent="localReference"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="DebugTexts" type="VBoxContainer" parent="localReference"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="winCaptureContainer" type="Control" parent="."]
+custom_minimum_size = Vector2(920, 1080)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="background" type="ColorRect" parent="winCaptureContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.72549, 0, 0.72549, 1)
+
+[node name="winCaptureDest" type="TextureRect" parent="winCaptureContainer"]
+layout_mode = 1
+offset_right = 920.0
+offset_bottom = 1080.0
+texture = ExtResource("2_foggv")
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("1_artcb")

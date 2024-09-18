@@ -6,11 +6,24 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using Godot;
+using Utils;
 
 public partial class GDICapture
 {
-    public ImageTexture Capture(IntPtr winHandle, Rect2I winRect)
+    public delegate void PixelSpaceChange(Vector2I size);
+    public delegate void AspectChange(EAspect aspect, Vector2I size);
+    public PixelSpaceChange sizeChange;
+    public AspectChange aspectChange;    
+    public PixelSpaceChange positionChange;
+    public ImageTexture Capture(IntPtr winHandle, out Rect2I winRect)
     {
+        RECT win_rect;
+        GetWindowRect(winHandle, out win_rect);
+        winRect = new Rect2I(
+            new(win_rect.Left, win_rect.Top),
+            new(win_rect.Right - win_rect.Left, win_rect.Bottom - win_rect.Top)
+        );
+
         IntPtr win_dc = GetWindowDC(winHandle);
         IntPtr mem_dc = CreateCompatibleDC(win_dc);
         IntPtr new_hbitmap = CreateCompatibleBitmap(win_dc, winRect.Size.X, winRect.Size.Y);

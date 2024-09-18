@@ -1,10 +1,14 @@
 using Godot;
+using Utils;
 
 public partial class WindowRemote : TextureRect
 {
 	private bool[] _TouchEvents;
 	private Rect2 _Rect;
 	private EAspect _Aspect;
+	private FontFile Roboto = GD.Load<FontFile>("assets/fonts/roboto/Roboto-Small.ttf"); // TODO: maybe figure out how to make this shit smaller
+	private SlimeCastleMining _Mining;
+	private TRectContext[] Draws; 
 	public WindowRemote()
 	{
 		GD.Print("WindowRemote Constructor");
@@ -16,9 +20,12 @@ public partial class WindowRemote : TextureRect
 	{
 		GD.Print("InputFetcher _Ready()");
 		_Rect = new(new(0,0), Size);
-		_Aspect = Utils.Aspect(Size);
+		_Aspect = Util.Aspect(Size);
 		WindowReference.Instance.aspectChange += OnCaptureAspectChanged;
+		WindowReference.Instance.sizeChange += OnCaptureSizeChanged;
 		WindowReference.Instance.textureCapture += OnTextureCapture;
+		_Mining = new SlimeCastleMining();
+		Draws = System.Array.Empty<TRectContext>();
 	}
 
 	private Vector2 GlobalToRelative(Vector2 globalPos)
@@ -76,11 +83,8 @@ public partial class WindowRemote : TextureRect
 	// 	GD.Print($"Texture Size: {Texture.GetSize()}");
     // }
 
-    public void OnCaptureAspectChanged(EAspect ascpet, Vector2I intTexSize)
+    public void OnCaptureAspectChanged(EAspect ascpet)
 	{
-		GD.Print("InputFetcher OnCaptureAspectChanged");
-		var tex_size = (Vector2)intTexSize;
-
 		var parent = GetParent<Control>();
 		
 		if (ascpet is EAspect.Portrait)
@@ -95,7 +99,18 @@ public partial class WindowRemote : TextureRect
 			Size = new Vector2(parent.Size.Y, parent.Size.X);
 			SetAnchorsPreset(LayoutPreset.TopRight, true);
 		}
-		_Aspect = Utils.Aspect(Size);
+		_Aspect = Util.Aspect(Size);
+
+		GD.Print($"---Aspect Update---");
+		GD.Print($"Parent Size: {GetParent<Control>().Size}");
+		GD.Print($"Container GlobPos: {GlobalPosition}");
+		GD.Print($"Container Size: {Size}");
+	}
+
+	public void OnCaptureSizeChanged(Vector2I intTexSize)
+	{
+		
+		var tex_size = (Vector2)intTexSize;
 
 		var rect_size = Size;
 		var scale_mult = rect_size.Y / tex_size.Y;
@@ -105,23 +120,35 @@ public partial class WindowRemote : TextureRect
 
 		_Rect = new Rect2(offset, scaled_tex_size);
 
-		GD.Print($"---Aspect Update---");
-		GD.Print($"Parent Size: {parent.Size}");
-		GD.Print($"Container GlobPos: {GlobalPosition}");
-		GD.Print($"Container Size: {Size}");
+		GD.Print($"---Size Update---");
 		GD.Print($"Rect GlobPos: {_Rect.Position}");
 		GD.Print($"Rect Size: {_Rect.Size}");
-		GD.Print($"Texture Size: {Texture.GetSize()}");
+		GD.Print($"Texture Size: {intTexSize}");
 	}
 
+	static bool debug = false;
 	public void OnTextureCapture(ImageTexture texture)
 	{
 		Texture = texture;
+		if (!debug)
+		{
+			Draws = _Mining.DebugProcess(texture, (Rect2I)_Rect);
+			debug = true;
+		}
 	}
 
     public override void _Draw()
     {
-		DrawRect(_Rect, Color.Color8(25, 255, 25, 255), false);
+		// DrawRect(_Rect, Color.Color8(25, 255, 25, 255), false);
+		foreach (var c in Draws)
+		{
+			DrawRect(c.Rect,  c.DrawColor,  c.DrawFill);
+			for (int idx = 0; idx < c.Label.Length; ++idx) 
+			{
+				DrawString(Roboto, c.Rect.Position + new Vector2(2f, 15f * (1f+idx)), c.Label[idx]);
+			}
+		}
+
         base._Draw();
     }
 }

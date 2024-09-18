@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Godot;
+using Utils;
 
 public partial class WindowReference : Node
 {
@@ -11,7 +12,7 @@ public partial class WindowReference : Node
     // Delegates
     private delegate IntPtr Proc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
     public delegate void PixelSpaceChange(Vector2I size);
-    public delegate void AspectChange(EAspect aspect, Vector2I size);
+    public delegate void AspectChange(EAspect aspect);
     public delegate void TextureChange(ImageTexture texture);
     private Proc _Proc;
     public PixelSpaceChange sizeChange;
@@ -28,13 +29,7 @@ public partial class WindowReference : Node
 
     private const double _CaptureInterval = 1d / 25d;
     private double _ElapsedInterval;
-    public static EAspect Aspect(Vector2I size)
-    {
-        float a = size.X / size.Y;
-        if (a < 1f) return EAspect.Portrait;
-        else if (a > 1f) return EAspect.Landscape;
-        else return EAspect.Square;
-    }
+
     public WindowReference()
     {
         Instance = this;        // TODO: remove this debug global
@@ -53,13 +48,10 @@ public partial class WindowReference : Node
         _Proc += OnProc;
         _WinProcOld = SetWindowLong(_WinHandle, PROC_INDEX, Marshal.GetFunctionPointerForDelegate(_Proc));
         _Capture = new GDICapture();
-        GetWindowRect(_WinHandle, out RECT win_rect);
-        _Rect = new(
-            new(win_rect.Left, win_rect.Right),
-            new(win_rect.Right - win_rect.Left, win_rect.Bottom - win_rect.Top)
-        );
-        _Aspect = Aspect(_Rect.Size);
-
+        var capture = _Capture.Capture(_WinHandle, out _Rect);
+        _Aspect = Util.Aspect(_Rect.Size);
+        var img = capture.GetImage();
+        img.SavePng("mining_debug_output.png");
         // // =============== DEBGGING HOOK ====================
         // Process[] processes = Process.GetProcessesByName(WindowTitle);
 
@@ -97,8 +89,9 @@ public partial class WindowReference : Node
 
     public void DeferredReady()
     {
-        aspectChange?.Invoke(_Aspect, _Rect.Size);
-        sizeChange?.Invoke(_Rect.Position);
+        aspectChange?.Invoke(_Aspect);
+        sizeChange?.Invoke(_Rect.Size);
+        positionChange?.Invoke(_Rect.Position);
     }
 
     public override void _Process(double delta)
@@ -106,7 +99,28 @@ public partial class WindowReference : Node
         _ElapsedInterval += delta;
         if (_ElapsedInterval >= _CaptureInterval)
         {
-            var texture = _Capture.Capture(_WinHandle, _Rect);
+            Rect2I rect;
+            var texture = _Capture.Capture(_WinHandle, out rect);
+
+            EAspect new_aspect = Util.Aspect(rect.Size);
+            if (new_aspect != _Aspect)
+            {
+                aspectChange?.Invoke(new_aspect);
+                _Aspect = new_aspect;
+                Console.WriteLine("Window Aspect Changed");
+            }
+            else if (rect.Size != _Rect.Size)
+            {
+                sizeChange?.Invoke(rect.Size);
+                Console.WriteLine("Window Size Changed");
+            }
+            if (rect.Position != _Rect.Position)
+            {
+                positionChange?.Invoke(rect.Position);
+                Console.WriteLine("Window Pos Changed");
+            }
+            _Rect = rect;
+
             textureCapture?.Invoke(texture);
             _ElapsedInterval -= _CaptureInterval;
         }
@@ -126,28 +140,28 @@ public partial class WindowReference : Node
     {
         switch (eventId)
         {
-            case WM_SIZE:
-                int width = (int)lParam & 0xFFFF;            // low = X
-                int height = ((int)lParam >> 16) & 0xFFFF;   // hi  = Y
-                var new_size = new Vector2I(width, height);
-                EAspect new_aspect = Aspect(new_size);
-                if (new_aspect != _Aspect)
-                    aspectChange?.Invoke(new_aspect, new_size);
-                else
-                    sizeChange?.Invoke(new_size);
-                _Aspect = new_aspect;
-                _Rect.Size = new_size;
-                Console.WriteLine("Window resized");
-                break;
+            // case WM_SIZE:
+            //     int width = (int)lParam & 0xFFFF;            // low = X
+            //     int height = ((int)lParam >> 16) & 0xFFFF;   // hi  = Y
+            //     var new_size = new Vector2I(width, height);
+            //     EAspect new_aspect = Aspect(new_size);
+            //     if (new_aspect != _Aspect)
+            //         aspectChange?.Invoke(new_aspect, new_size);
+            //     else
+            //         sizeChange?.Invoke(new_size);
+            //     _Aspect = new_aspect;
+            //     _Rect.Size = new_size;
+            //     Console.WriteLine("Window resized");
+            //     break;
 
-            case WM_MOVE:
-                int x = (int)lParam & 0xFFFF;           // low = X
-                int y = ((int)lParam >> 16) & 0xFFFF;   // hi  = Y
-                var new_pos = new Vector2I(x, y);
-                positionChange?.Invoke(new_pos);
-                _Rect.Position = new_pos;
-                Console.WriteLine("Window moved");
-                break;
+            // case WM_MOVE:
+            //     int x = (int)lParam & 0xFFFF;           // low = X
+            //     int y = ((int)lParam >> 16) & 0xFFFF;   // hi  = Y
+            //     var new_pos = new Vector2I(x, y);
+            //     positionChange?.Invoke(new_pos);
+            //     _Rect.Position = new_pos;
+            //     Console.WriteLine("Window moved");
+            //     break;
             
             default:
                 GD.Print($"Unhandled eventID: {eventId}");

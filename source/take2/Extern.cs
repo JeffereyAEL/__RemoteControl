@@ -5,21 +5,10 @@ using Godot;
 public partial class WindowReference : Node
 {
 	// ============= Windows ====================
-	[StructLayout(LayoutKind.Sequential)]
-	public struct RECT
-	{
-		public int Left;
-		public int Top;
-		public int Right;
-		public int Bottom;
-	}
 
 	// P/Invoke declarations
 	[DllImport("user32.dll", SetLastError = true)]
 	private static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
-
-	[DllImport("user32.dll")]
-	private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
 	[DllImport("user32.dll", SetLastError = true)]
 	private static extern IntPtr SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
@@ -49,6 +38,17 @@ public partial class WindowReference : Node
 
 public partial class GDICapture
 {
+	[StructLayout(LayoutKind.Sequential)]
+	public struct RECT
+	{
+		public int Left;
+		public int Top;
+		public int Right;
+		public int Bottom;
+	}
+
+	[DllImport("user32.dll")]
+	private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
 	// ============= Imaging ====================
 	[DllImport("user32.dll")]
